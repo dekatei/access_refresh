@@ -42,7 +42,7 @@ func createSignedToken(id, ip string) (string, error) {
 
 func createRefreshToken() (string, error) {
 	token := make([]byte, 32)
-
+	// получем Refresh токен
 	if _, err := rand.Read(token); err != nil {
 		return "", fmt.Errorf("failed to create refresh token: %s", err)
 	}
@@ -52,17 +52,19 @@ func createRefreshToken() (string, error) {
 }
 
 func hashRefreshToken(token string) (string, error) {
-	// хеширование Refresh токена
+	// хешируем Refresh токен
 	hashToken, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
 	return string(hashToken), err
 }
 
-func handlerCreateTokens(w http.ResponseWriter, req *http.Request) {
+// фунция, используемая для обновления токенов
+func createTokens(w http.ResponseWriter, req *http.Request) (string, string) {
 	userID := req.URL.Query().Get("user_id")
+
 	if userID == "0" || userID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("userID missing"))
-		return
+		return "", ""
 	}
 
 	ip := req.RemoteAddr
@@ -70,25 +72,29 @@ func handlerCreateTokens(w http.ResponseWriter, req *http.Request) {
 	accessToken, err := createSignedToken(userID, ip)
 	if err != nil {
 		http.Error(w, "failed to create access token", http.StatusInternalServerError)
-		return
+		return "", ""
 	}
 
 	refreshToken, err := createRefreshToken()
 	if err != nil {
 		http.Error(w, "failed to create refresh token", http.StatusInternalServerError)
-		return
+		return "", ""
 	}
 
 	hashedRefreshToken, _ := hashRefreshToken(refreshToken)
 
-	insertHashedToken(userID, hashedRefreshToken)
-
+	//выводим токены пользователю
 	json.NewEncoder(w).Encode(map[string]string{
 		"accessToken":  accessToken,
 		"refreshToken": hashedRefreshToken,
 	})
+	return userID, hashedRefreshToken
+}
+func handlerCreateTokens(w http.ResponseWriter, req *http.Request) {
+	userID, hashedRefreshToken := createTokens(w, req)
+	//добавляем хэшированный refresh токен в базу
+	addHashedToken(userID, hashedRefreshToken)
 
-	//w.Write([]byte(accessToken))
 }
 
 func handlerRefreshToken(w http.ResponseWriter, req *http.Request) {
@@ -102,7 +108,7 @@ func handlerRefreshToken(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var tokenDB string
-	// Вытаскиваем из базы хэшированный токен и проверяем его
+	// вытаскиваем из базы хэшированный токен и проверяем его
 	db, err := sql.Open("sqlite", "data_hh.db")
 	if err != nil {
 		fmt.Println(err)
@@ -117,32 +123,13 @@ func handlerRefreshToken(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Если хэши совпадают, генерируем новые токены
+	// если хэши совпадают, генерируем новые токены
 	if token == tokenDB {
 		w.Write([]byte("Ваш новый токен:"))
 
-		ip := req.RemoteAddr
-
-		accessToken, err := createSignedToken(userID, ip)
-		if err != nil {
-			http.Error(w, "failed to create access token", http.StatusInternalServerError)
-			return
-		}
-
-		refreshToken, err := createRefreshToken()
-		if err != nil {
-			http.Error(w, "failed to create refresh token", http.StatusInternalServerError)
-			return
-		}
-
-		hashedRefreshToken, _ := hashRefreshToken(refreshToken)
-
+		_, hashedRefreshToken := createTokens(w, req)
+		//обновляем базу
 		updateHashedToken(userID, hashedRefreshToken)
-
-		json.NewEncoder(w).Encode(map[string]string{
-			"accessToken":  accessToken,
-			"refreshToken": hashedRefreshToken,
-		})
 	} else {
 		w.Write([]byte("Доступ запрещен, токены не совпадают"))
 	}
@@ -166,7 +153,7 @@ func updateHashedToken(userID, hashToken string) {
 
 }
 
-func insertHashedToken(userID, hashToken string) {
+func addHashedToken(userID, hashToken string) {
 	db, err := sql.Open("sqlite", "data_hh.db")
 	if err != nil {
 		fmt.Println(err)
