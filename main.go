@@ -201,7 +201,7 @@ func main() {
 
 		fmt.Println(x, y)
 	}
-	//fmt.Println(tokenHash)
+
 	r := mux.NewRouter()
 	r.HandleFunc("/tokens", handlerCreateTokens).Methods("GET")
 	r.HandleFunc("/refresh", handlerRefreshToken).Methods("POST")
