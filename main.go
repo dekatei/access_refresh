@@ -92,6 +92,7 @@ func createTokens(w http.ResponseWriter, req *http.Request) (string, string) {
 }
 func handlerCreateTokens(w http.ResponseWriter, req *http.Request) {
 	userID, hashedRefreshToken := createTokens(w, req)
+
 	//добавляем хэшированный refresh токен в базу
 	addHashedToken(userID, hashedRefreshToken)
 
@@ -125,12 +126,14 @@ func handlerRefreshToken(w http.ResponseWriter, req *http.Request) {
 
 	// если хэши совпадают, генерируем новые токены
 	if token == tokenDB {
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Ваш новый токен:"))
 
 		_, hashedRefreshToken := createTokens(w, req)
 		//обновляем базу
 		updateHashedToken(userID, hashedRefreshToken)
 	} else {
+		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Доступ запрещен, токены не совпадают"))
 	}
 }
@@ -178,7 +181,7 @@ func main() {
 		return
 	}
 	defer db.Close()
-	//db.Query("DELETE FROM refresh_tokens")
+	db.Query("DELETE FROM refresh_tokens")
 
 	rows, err := db.Query("SELECT user_id, token_hash FROM refresh_tokens")
 	if err != nil {

@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMainHandlerWhenOk(t *testing.T) {
-	req := httptest.NewRequest("GET", "/cafe?count=2&city=moscow", nil)
+func TestCreateHandlerWhenOk(t *testing.T) {
+	req := httptest.NewRequest("POST", "/tokens?user_id=1", nil)
 
 	responseRecorder := httptest.NewRecorder()
 	handler := http.HandlerFunc(handlerCreateTokens)
@@ -23,4 +23,16 @@ func TestMainHandlerWhenOk(t *testing.T) {
 
 	body := responseRecorder.Body.String()
 	assert.NotEmpty(t, body)
+}
+
+func TestCreateHandlerWhenMissedUserID(t *testing.T) {
+	req := httptest.NewRequest("POST", "/tokens", nil)
+
+	responseRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(handlerCreateTokens)
+	handler.ServeHTTP(responseRecorder, req)
+
+	status := responseRecorder.Code
+	require.Equal(t, http.StatusBadRequest, status)
+
 }
