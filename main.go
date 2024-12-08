@@ -203,7 +203,7 @@ func main() {
 	}
 	//fmt.Println(tokenHash)
 	r := mux.NewRouter()
-	r.HandleFunc("/tokens", handlerCreateTokens).Methods("POST")
+	r.HandleFunc("/tokens", handlerCreateTokens).Methods("GET")
 	r.HandleFunc("/refresh", handlerRefreshToken).Methods("POST")
 	http.ListenAndServe(":8080", r)
 

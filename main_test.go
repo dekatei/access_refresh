@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateHandlerWhenOk(t *testing.T) {
-	req := httptest.NewRequest("POST", "/tokens?user_id=1", nil)
+	req := httptest.NewRequest("GET", "/tokens?user_id=1", nil)
 
 	responseRecorder := httptest.NewRecorder()
 	handler := http.HandlerFunc(handlerCreateTokens)
